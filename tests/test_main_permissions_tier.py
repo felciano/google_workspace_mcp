@@ -14,6 +14,19 @@ os.environ["WORKSPACE_MCP_STATELESS_MODE"] = "false"
 import main
 
 
+def test_main_rejects_invalid_gmail_body_max_chars_at_startup(monkeypatch, capsys):
+    monkeypatch.setenv("WORKSPACE_MCP_GMAIL_BODY_MAX_CHARS", "-1")
+    monkeypatch.setattr(sys, "argv", ["main.py"])
+    monkeypatch.setattr(main, "_restore_stdout", lambda: None)
+    monkeypatch.setattr(main, "configure_safe_logging", lambda: None)
+
+    with pytest.raises(SystemExit) as exc:
+        main.main()
+
+    assert exc.value.code == 1
+    assert "WORKSPACE_MCP_GMAIL_BODY_MAX_CHARS" in capsys.readouterr().err
+
+
 def test_resolve_permissions_mode_selection_without_tier():
     services = ["gmail", "drive"]
     resolved_services, tier_tool_filter = main.resolve_permissions_mode_selection(

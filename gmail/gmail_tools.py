@@ -52,17 +52,16 @@ from auth.scopes import (
 )
 from gmail.gmail_helpers import (
     GMAIL_METADATA_HEADERS,
-    RAW_BODY_TRUNCATE_LIMIT,
     _analyze_thread_ownership_impl,
     _is_benign_signature_http_error,
     _signature_fetch_tool_error,
+    get_gmail_body_max_chars,
 )
 
 logger = logging.getLogger(__name__)
 
 GMAIL_BATCH_SIZE = 25
 GMAIL_REQUEST_DELAY = 0.1
-HTML_BODY_TRUNCATE_LIMIT = 20000
 LOW_VALUE_TEXT_PLACEHOLDERS = (
     "your client does not support html",
     "view this email in your browser",
@@ -200,12 +199,7 @@ def _format_body_content(
     if body_format == "html":
         html_stripped = html_body.strip()
         if html_stripped:
-            if len(html_stripped) > HTML_BODY_TRUNCATE_LIMIT:
-                return (
-                    html_stripped[:HTML_BODY_TRUNCATE_LIMIT]
-                    + "\n\n[Content truncated...]"
-                )
-            return html_stripped
+            return _truncate_content(html_stripped, get_gmail_body_max_chars())
         # Fall back to text body when no HTML is available
         text_stripped = text_body.strip()
         return text_stripped if text_stripped else "[No readable content found]"
@@ -234,19 +228,19 @@ def _format_body_content(
     )
 
     if use_html:
-        content = html_text
-        if len(content) > HTML_BODY_TRUNCATE_LIMIT:
-            content = content[:HTML_BODY_TRUNCATE_LIMIT] + "\n\n[Content truncated...]"
-        return content
+        return _truncate_content(html_text, get_gmail_body_max_chars())
     elif text_stripped:
         return text_body
     else:
         return "[No readable content found]"
 
 
-def _truncate_content(content: str, limit: int) -> str:
-    """Truncate content to a readable length for tool responses."""
-    if len(content) <= limit:
+def _truncate_content(content: str, limit: Optional[int]) -> str:
+    """Truncate content to a readable length for tool responses.
+
+    ``limit`` of ``None`` returns ``content`` unchanged.
+    """
+    if limit is None or len(content) <= limit:
         return content
     return content[:limit] + "\n\n[Content truncated...]"
 
@@ -264,7 +258,7 @@ def _decode_raw_mime_content(raw_data: str) -> str:
     except (binascii.Error, ValueError) as exc:
         return f"[Failed to decode raw MIME: {exc}]"
 
-    return _truncate_content(decoded_raw, RAW_BODY_TRUNCATE_LIMIT)
+    return _truncate_content(decoded_raw, get_gmail_body_max_chars())
 
 
 def _format_message_header_lines(

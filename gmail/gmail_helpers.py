@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from collections import Counter
 from datetime import datetime, timezone
 from email.utils import getaddresses, parseaddr, parsedate_to_datetime
@@ -13,7 +14,11 @@ from googleapiclient.errors import HttpError
 
 logger = logging.getLogger(__name__)
 
-RAW_BODY_TRUNCATE_LIMIT = 20000
+_GMAIL_BODY_ENV_NAME = "WORKSPACE_MCP_GMAIL_BODY_MAX_CHARS"
+
+# Bounds what one message body contributes to a tool response. Long HTML
+# messages such as multi-page receipts can exceed it; raise it or set ``0``.
+DEFAULT_GMAIL_BODY_MAX_CHARS = 20000
 GMAIL_QUOTA_ERROR_MARKERS = (
     "dailyLimitExceeded",
     "quotaExceeded",
@@ -251,3 +256,30 @@ def _analyze_thread_ownership_impl(
         "excluded_drafts": excluded_drafts,
         "message_count": len(messages),
     }
+
+
+def get_gmail_body_max_chars() -> Optional[int]:
+    """Return the cap on characters of one Gmail message body, or ``None``.
+
+    Parsing rules:
+    - unset or empty → ``DEFAULT_GMAIL_BODY_MAX_CHARS``
+    - ``0`` → no truncation (``None``)
+    - positive int → that many characters
+    - invalid or negative value → raise ``ValueError``
+    """
+    raw = os.getenv(_GMAIL_BODY_ENV_NAME)
+    if raw is None or raw.strip() == "":
+        return DEFAULT_GMAIL_BODY_MAX_CHARS
+    try:
+        value = int(raw.strip())
+    except ValueError as exc:
+        raise ValueError(
+            f"Invalid {_GMAIL_BODY_ENV_NAME}={raw!r}; "
+            "expected a non-negative integer character count."
+        ) from exc
+    if value < 0:
+        raise ValueError(
+            f"Invalid {_GMAIL_BODY_ENV_NAME}={raw!r}; "
+            "expected a non-negative integer character count."
+        )
+    return value or None

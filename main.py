@@ -402,6 +402,15 @@ def main():
         )
         sys.exit(1)
 
+    # Fail closed on a typo rather than silently keeping the default cap.
+    from gmail.gmail_helpers import get_gmail_body_max_chars
+
+    try:
+        get_gmail_body_max_chars()
+    except ValueError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
     resolve_callback_port_for_transport(args.transport)
 
     # Set port and base URI once for reuse throughout the function

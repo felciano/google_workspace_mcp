@@ -253,6 +253,7 @@ uv run main.py --transport streamable-http --tools gmail drive calendar
 | `WORKSPACE_ATTACHMENT_DIR` | | Downloaded attachments dir and default trusted local attachment directory — default `~/.workspace-mcp/attachments/` |
 | `WORKSPACE_MCP_URL` | | Remote MCP endpoint URL for CLI |
 | `ALLOWED_FILE_DIRS` | | Colon-separated allowlist for local file reads |
+| `WORKSPACE_MCP_GMAIL_BODY_MAX_CHARS` | | Characters of one Gmail message body (HTML, text converted from HTML, or raw MIME) returned before `[Content truncated...]` — default `20000`; `0` disables truncation. Invalid or negative values fail server startup |
 | **🧰 Tool Selection** | | |
 | `WORKSPACE_MCP_TOOLS` | | Comma-separated services, e.g. `gmail,drive,calendar`; empty means all services |
 | `WORKSPACE_MCP_TOOL_TIER` | | `core`, `extended`, or `complete`; empty means all tools |
